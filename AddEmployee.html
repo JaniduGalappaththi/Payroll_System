@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Stylesheet'); ?>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <style>
+      .form-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 20px 0;
+      }
+      .form-field {
+        display: flex;
+        flex-direction: column;
+      }
+      .form-field label {
+        margin-bottom: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .form-field input, .form-field select {
+        padding: 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 1rem;
+      }
+      .form-field-full {
+        grid-column: 1 / -1;
+      }
+      .submit-btn {
+        background-color: var(--solar-green);
+        color: white;
+        padding: 15px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      .submit-btn:hover {
+        background-color: #4a7a54;
+      }
+      .back-link {
+        display: inline-block;
+        margin-bottom: 15px;
+        text-decoration: none;
+        color: var(--dark-text);
+        font-weight: 600;
+      }
+      .back-link:hover {
+        text-decoration: underline;
+      }
+      #status-message {
+        margin-top: 15px;
+        font-weight: bold;
+      }
+      .status-success {
+        color: var(--solar-green);
+      }
+      .status-error {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    AURORA SOLAR PAYROLL
+  </div>
+  <div class="navbar-menu">
+    
+    <a href="<?= webAppUrl ?>" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=add" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-user-plus"></i><span>Add Employee</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=list" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-users"></i><span>Employee List</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=salary" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-wallet"></i><span>Salary</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=attendance" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-clock"></i><span>Attendance</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=runpayroll" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-play-circle"></i><span>Run Payroll</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=reports" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-file-alt"></i><span>Reports</span></div>
+    </a>
+
+  </div>
+</nav>
+
+    <main class="main-container">
+      <div class="widget widget-full">
+        
+        <a href="<?= webAppUrl ?>" class="back-link">&larr; Back to Dashboard</a>
+        <h2 class="widget-title">Add New Employee</h2>
+        
+        <form id="employee-form">
+          <div class="form-container">
+            
+            <div class="form-field">
+              <label for="empId">Employee ID</label>
+              <input type="text" id="empId" required>
+            </div>
+            
+            <div class="form-field">
+              <label for="joinDate">Join Date</label>
+              <input type="date" id="joinDate" required>
+            </div>
+            
+            <div class="form-field">
+              <label for="firstName">First Name</label>
+              <input type="text" id="firstName" required>
+            </div>
+            
+            <div class="form-field">
+              <label for="lastName">Last Name</label>
+              <input type="text" id="lastName" required>
+            </div>
+            
+            <div class="form-field">
+              <label for="jobTitle">Job Title</label>
+              <input type="text" id="jobTitle">
+            </div>
+            
+            <div class="form-field">
+              <label for="department">Department</label>
+              <select id="department">
+                <option value="Installation">Installation</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Sales">Sales</option>
+                <option value="Admin">Admin</option>
+              </select>
+            </div>
+
+            <div class="form-field-full">
+              <button type="submit" class="submit-btn" id="submit-button">Save Employee</button>
+              <div id="status-message"></div>
+            </div>
+
+          </div>
+        </form>
+
+      </div>
+    </main>
+
+    <script>
+      // Form එක submit කරනකොට මේ function එක run වෙනවා
+      document.getElementById("employee-form").addEventListener("submit", function(e) {
+        e.preventDefault(); // Form එක auto-submit වෙන එක නවත්තනවා
+        
+        var statusMsg = document.getElementById("status-message");
+        var submitBtn = document.getElementById("submit-button");
+
+        statusMsg.className = "";
+        statusMsg.innerText = "Saving...";
+        submitBtn.disabled = true;
+
+        // Form එකේ data ටික object එකකට දාගන්නවා
+        var employeeData = {
+          empId: document.getElementById("empId").value,
+          joinDate: document.getElementById("joinDate").value,
+          firstName: document.getElementById("firstName").value,
+          lastName: document.getElementById("lastName").value,
+          jobTitle: document.getElementById("jobTitle").value,
+          department: document.getElementById("department").value
+        };
+
+        // 'Code.gs' එකේ 'saveEmployeeDetails' function එක run කරනවා
+        google.script.run
+          .withSuccessHandler(onSaveSuccess)
+          .withFailureHandler(onSaveFailure)
+          .saveEmployeeDetails(employeeData);
+      });
+
+      // Data save උනාම මේක run වෙනවා
+      function onSaveSuccess(response) {
+        var statusMsg = document.getElementById("status-message");
+        var submitBtn = document.getElementById("submit-button");
+        
+        if (response.status === "success") {
+          statusMsg.className = "status-success";
+          statusMsg.innerText = response.message;
+          document.getElementById("employee-form").reset(); // Form එක clear කරනවා
+        } else {
+          statusMsg.className = "status-error";
+          statusMsg.innerText = response.message;
+        }
+        submitBtn.disabled = false;
+      }
+
+      // Error එකක් ආවොත් මේක run වෙනවා
+      function onSaveFailure(error) {
+        var statusMsg = document.getElementById("status-message");
+        var submitBtn = document.getElementById("submit-button");
+        statusMsg.className = "status-error";
+        statusMsg.innerText = "Error: " + error.message;
+        submitBtn.disabled = false;
+      }
+    </script>
+  </body>
+</html>

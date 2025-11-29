@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <?!= include('Stylesheet'); ?>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <style>
+        /* (පරණ style ටිකම පාවිච්චි කරයි) */
+        .data-table th, .data-table td {
+            vertical-align: middle;
+        }
+        .salary-input {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 120px;
+        }
+        .update-btn {
+            background-color: var(--solar-orange);
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .update-btn:hover {
+            background-color: #e8924a;
+        }
+        /* Status message for updates */
+        #update-status {
+            text-align: center;
+            padding: 10px;
+            font-weight: bold;
+            display: none; /* Hide initially */
+        }
+        .status-success { color: var(--solar-green); }
+        .status-error { color: red; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    AURORA SOLAR PAYROLL
+  </div>
+  <div class="navbar-menu">
+    
+    <a href="<?= webAppUrl ?>" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=add" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-user-plus"></i><span>Add Employee</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=list" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-users"></i><span>Employee List</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=salary" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-wallet"></i><span>Salary</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=attendance" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-clock"></i><span>Attendance</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=runpayroll" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-play-circle"></i><span>Run Payroll</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=reports" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-file-alt"></i><span>Reports</span></div>
+    </a>
+
+  </div>
+</nav>
+    <main class="main-container">
+        <div class="widget widget-full">
+            <h2 class="widget-title">Salary Management</h2>
+            
+            <div id="update-status"></div>
+
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Name</th>
+                            <th>Base Salary (LKR)</th>
+                            <th>Pay Type</th>
+                            <th>Allowance (LKR)</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salary-table-body">
+                        <tr><td colspan="6" style="text-align:center;">Loading salary data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Page load උනාම data ගේන්න
+        document.addEventListener("DOMContentLoaded", loadSalaryData);
+
+        // Data ගේන ප්‍රධාන function එක
+        function loadSalaryData() {
+            google.script.run
+                .withSuccessHandler(populateSalaryTable)
+                .withFailureHandler(onFailure)
+                .getEmployeeSalaryData(); // Code.gs එකේ අලුත් function එක
+        }
+
+        // Table එක හදන function එක
+        function populateSalaryTable(data) {
+            var tableBody = document.getElementById('salary-table-body');
+            tableBody.innerHTML = ""; 
+
+            if (!data || data.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No employees found. Please add employees first.</td></tr>';
+                return;
+            }
+
+            data.forEach(function(emp) {
+                var tr = document.createElement('tr');
+                tr.id = 'row-' + emp.empId; // හැම row එකකටම ID එකක් දෙනවා
+
+                tr.innerHTML = `
+                    <td>${emp.empId}</td>
+                    <td>${emp.firstName} ${emp.lastName}</td>
+                    <td>
+                        <input type="number" class="salary-input" id="salary-${emp.empId}" value="${emp.baseSalary || 0}">
+                    </td>
+                    <td>
+                        <select class="salary-input" id="type-${emp.empId}">
+                            <option value="Monthly" ${emp.payType == 'Monthly' ? 'selected' : ''}>Monthly</option>
+                            <option value="Hourly" ${emp.payType == 'Hourly' ? 'selected' : ''}>Hourly</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" class="salary-input" id="allowance-${emp.empId}" value="${emp.allowance || 0}">
+                    </td>
+                    <td>
+                        <button class="update-btn" onclick="updateSalary('${emp.empId}')">Update</button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // "Update" බට්න් එක click කලාම දුවන function එක
+        function updateSalary(empId) {
+            var statusDiv = document.getElementById('update-status');
+            statusDiv.style.display = 'block';
+            statusDiv.className = '';
+            statusDiv.innerText = 'Updating...';
+
+            // අලුත් data ටික object එකකට දාගන්නවා
+            var salaryData = {
+                empId: empId,
+                baseSalary: document.getElementById('salary-' + empId).value,
+                payType: document.getElementById('type-' + empId).value,
+                allowance: document.getElementById('allowance-' + empId).value
+            };
+
+            // 'Code.gs' එකේ අලුත් function එක run කරනවා
+            google.script.run
+                .withSuccessHandler(onUpdateSuccess)
+                .withFailureHandler(onUpdateFailure)
+                .updateEmployeeSalary(salaryData);
+        }
+
+        function onUpdateSuccess(response) {
+            var statusDiv = document.getElementById('update-status');
+            if (response.status === "success") {
+                statusDiv.className = 'status-success';
+                statusDiv.innerText = response.message;
+            } else {
+                statusDiv.className = 'status-error';
+                statusDiv.innerText = response.message;
+            }
+            // Message එක තත්පර 3කින් අයින් කරනවා
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+        }
+
+        function onUpdateFailure(error) {
+            var statusDiv = document.getElementById('update-status');
+            statusDiv.className = 'status-error';
+            statusDiv.innerText = 'Error: ' + error.message;
+            setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+        }
+
+        function onFailure(error) {
+            var tableBody = document.getElementById('salary-table-body');
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: red;">Failed to load data: ${error.message}</td></tr>`;
+        }
+    </script>
+</body>
+</html>
