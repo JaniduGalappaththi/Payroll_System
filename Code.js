@@ -372,3 +372,5 @@ function generateMonthlySummary(yearMonth) { // yearMonth e.g., "2025-11"
     throw new Error("Failed to generate report: " + e.message);
   }
 }
+
+// Test Update
