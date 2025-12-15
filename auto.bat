@@ -14,7 +14,7 @@ git commit -m "Auto Update: %date% %time%" || echo [INFO] No new changes found t
 
 :: 3. GitHub එකට යවන්න
 git push
-
+: : // 
 echo.
 echo Waiting 10 seconds...
 timeout /t 10 >nul
