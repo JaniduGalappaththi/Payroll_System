@@ -1,0 +1,150 @@
+<style>
+  /* Solar Theme Colors */
+  :root {
+    --solar-green: #5A9367;
+    --solar-orange: #F4A261;
+    --solar-yellow: #E9C46A;
+    --dark-text: #264653;
+    --light-bg: #F8F9FA;
+    --glass-bg: rgba(255, 255, 255, 0.6);
+    --border-color: rgba(255, 255, 255, 0.3);
+  }
+
+  body {
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+    background-color: var(--light-bg);
+    color: var(--dark-text);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Top Navigation Bar */
+  .navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 30px;
+    background: linear-gradient(135deg, var(--solar-green), var(--solar-orange));
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+
+  .navbar-menu {
+    display: flex;
+    gap: 25px;
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.8rem;
+    cursor: pointer;
+    opacity: 0.9;
+    transition: opacity 0.2s;
+  }
+  .nav-item:hover {
+    opacity: 1;
+  }
+  .nav-item i { /* Font Awesome icons (optional) */
+    font-size: 1.2rem;
+    margin-bottom: 4px;
+  }
+
+
+  /* Main Dashboard Grid */
+  .main-container {
+    padding: 25px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-gap: 20px;
+  }
+
+  /* Widgets */
+  .widget {
+    background: var(--glass-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  
+  .widget-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+  }
+
+  /* Specific Widget Layouts */
+  .widget-full {
+    grid-column: 1 / -1; /* Full width */
+  }
+  
+  .widget-large {
+     grid-column: 1 / 3; /* 2/3 width */
+     min-height: 350px;
+  }
+
+  .widget-small {
+    grid-column: 3 / 4; /* 1/3 width */
+    min-height: 350px;
+  }
+
+
+  /* Payroll History Table */
+  .table-container {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .payroll-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+
+  .payroll-table th, .payroll-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .payroll-table th {
+    background-color: rgba(0,0,0,0.03);
+    font-weight: 600;
+  }
+
+  /* Status Badge */
+  .status {
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+  }
+
+  .status-paid {
+    background-color: #D4EDDA;
+    color: #155724;
+  }
+  
+  .status-pending {
+    background-color: #FFF3CD;
+    color: #856404;
+  }
+
+/* ... (ඔයාගෙ පරණ CSS ඔක්කොම මෙතන තියෙයි) ... */
+
+/* Navbar එකේ Links ලස්සන කරන්න */
+.nav-item-link {
+  text-decoration: none;
+  color: white;
+}
+</style>

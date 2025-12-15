@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <?!= include('Stylesheet'); ?>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <style>
+        .form-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .form-field { display: flex; flex-direction: column; }
+        .form-field label { margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
+        .form-field input, .form-field select {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .form-field-full { grid-column: 1 / -1; }
+        .submit-btn {
+            background-color: var(--solar-green);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .submit-btn:disabled { background-color: #ccc; }
+        #status-message { margin-top: 15px; font-weight: bold; }
+        .status-success { color: var(--solar-green); }
+        .status-error { color: red; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    AURORA SOLAR PAYROLL
+  </div>
+  <div class="navbar-menu">
+    
+    <a href="<?= webAppUrl ?>" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=add" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-user-plus"></i><span>Add Employee</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=list" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-users"></i><span>Employee List</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=salary" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-wallet"></i><span>Salary</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=attendance" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-clock"></i><span>Attendance</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=runpayroll" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-play-circle"></i><span>Run Payroll</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=reports" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-file-alt"></i><span>Reports</span></div>
+    </a>
+
+  </div>
+</nav>
+
+    <main class="main-container">
+        <div class="widget widget-full">
+            <h2 class="widget-title">Log Employee Attendance / Timesheet</h2>
+            
+            <form id="attendance-form">
+                <div class="form-container">
+                    
+                    <div class="form-field">
+                        <label for="emp-select">Select Employee</label>
+                        <select id="emp-select" required>
+                            <option value="">-- Loading employees... --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="att-date">Date</label>
+                        <input type="date" id="att-date" required>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="hours-worked">Hours Worked</label>
+                        <input type="number" id="hours-worked" step="0.5" placeholder="e.g., 8.5" required>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="entry-type">Entry Type</label>
+                        <select id="entry-type">
+                            <option value="Full Day">Full Day</option>
+                            <option value="Half Day">Half Day</option>
+                            <option value="Overtime">Overtime</option>
+                            <option value="Leave">Leave</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field-full">
+                        <button type="submit" class="submit-btn" id="submit-button">
+                            Save Attendance Log
+                        </button>
+                        <div id="status-message"></div>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        // Page load උනාම employee list එක ගේන්න
+        document.addEventListener("DOMContentLoaded", function() {
+            // 'RunPayroll' එකට ගත්ත function එකමයි
+            google.script.run
+                .withSuccessHandler(populateDropdown)
+                .withFailureHandler(onFailure)
+                .getEmployeeNames();
+        });
+
+        function populateDropdown(employees) {
+            var select = document.getElementById('emp-select');
+            select.innerHTML = '<option value="">-- Select an employee --</option>';
+            if (employees && employees.length > 0) {
+                employees.forEach(function(emp) {
+                    var option = document.createElement('option');
+                    option.value = emp.empId;
+                    option.text = `${emp.name} (${emp.empId})`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">-- No employees found --</option>';
+            }
+        }
+
+        // Form එක submit කරනකොට
+        document.getElementById("attendance-form").addEventListener("submit", function(e) {
+            e.preventDefault(); 
+            
+            var statusMsg = document.getElementById("status-message");
+            var submitBtn = document.getElementById("submit-button");
+
+            statusMsg.className = "";
+            statusMsg.innerText = "Processing...";
+            submitBtn.disabled = true;
+
+            // Form data ටික object එකකට දාගන්නවා
+            var attendanceData = {
+                empId: document.getElementById('emp-select').value,
+                date: document.getElementById('att-date').value,
+                hours: document.getElementById('hours-worked').value,
+                type: document.getElementById('entry-type').value
+            };
+
+            // 'Code.gs' එකේ අලුත් function එක run කරනවා
+            google.script.run
+                .withSuccessHandler(onSaveSuccess)
+                .withFailureHandler(onFailure)
+                .logAttendance(attendanceData);
+        });
+
+        function onSaveSuccess(response) {
+            var statusMsg = document.getElementById("status-message");
+            var submitBtn = document.getElementById("submit-button");
+            
+            statusMsg.className = "status-success";
+            statusMsg.innerText = response.message;
+            submitBtn.disabled = false;
+            
+            // Form එක clear කරනවා (emp-select එක ඇර)
+            document.getElementById('att-date').value = '';
+            document.getElementById('hours-worked').value = '';
+        }
+
+        function onFailure(error) {
+            var statusMsg = document.getElementById("status-message");
+            var submitBtn = document.getElementById("submit-button");
+            statusMsg.className = "status-error";
+            statusMsg.innerText = "Error: " + error.message;
+            submitBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>

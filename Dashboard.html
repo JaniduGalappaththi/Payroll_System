@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Stylesheet'); ?>
+    
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+  </head>
+  <body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    AURORA SOLAR PAYROLL
+  </div>
+  <div class="navbar-menu">
+    
+    <a href="<?= webAppUrl ?>" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=add" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-user-plus"></i><span>Add Employee</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=list" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-users"></i><span>Employee List</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=salary" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-wallet"></i><span>Salary</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=attendance" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-clock"></i><span>Attendance</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=runpayroll" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-play-circle"></i><span>Run Payroll</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=reports" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-file-alt"></i><span>Reports</span></div>
+    </a>
+
+  </div>
+</nav>
+
+    <main class="main-container">
+
+      <div class="widget widget-large">
+        <h2 class="widget-title">Quartely Payroll Trend</h2>
+        <div id="trend_chart_div" style="width: 100%; height: 300px;"></div>
+      </div>
+      
+      <div class="widget widget-small">
+        <h2 class="widget-title">Salary Breakdown</h2>
+        <div id="breakdown_chart_div" style="width: 100%; height: 300px;"></div>
+      </div>
+
+      <div class="widget widget-full">
+        <h2 class="widget-title">Payroll History</h2>
+        <div class="table-container">
+          <table class="payroll-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Employee ID</th>
+                <th>Name</th>
+                <th>Gross Pay</th>
+                <th>Net Pay</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="payroll-table-body">
+              </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+
+    <script>
+      // Page එක load උනාම මේ functions දුවන්න
+      document.addEventListener("DOMContentLoaded", function() {
+        // "Loading..." message එක JavaScript එකෙන් දානවා
+        var tableBody = document.getElementById('payroll-table-body');
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading data...</td></tr>';
+
+        // Google Sheet එකෙන් data ගේන්න
+        loadPayrollHistory();
+        
+        // Charts අඳින්න
+        google.charts.load('current', {'packages':['corechart']});
+        google.charts.setOnLoadCallback(drawCharts);
+      });
+
+      // Google Sheet එකෙන් data ගේන function එක
+      function loadPayrollHistory() {
+        google.script.run
+          .withSuccessHandler(populateTable)
+          .withFailureHandler(onFailure)
+          .getPayrollHistory();
+      }
+
+      // === මෙන්න වැදගත්ම FIX එක ===
+      // Data සාර්ථකව ගෙනාවම table එක හදන function එක
+      function populateTable(data) {
+        var tableBody = document.getElementById('payroll-table-body');
+        tableBody.innerHTML = ""; // "Loading..." කියන එක මකන්න
+
+        // data කියන එක array එකක්ද, හිස් නැද්ද කියලා බලනවා
+        if (data && data.length > 0) {
+          data.forEach(function(row) {
+            var tr = document.createElement('tr');
+            
+            var statusClass = 'status-pending'; 
+            if (row.status) { 
+                statusClass = row.status.toLowerCase() === 'paid' ? 'status-paid' : 'status-pending';
+            }
+            
+            var grossPay = (typeof row.gross === 'number') ? row.gross.toFixed(2) : '0.00';
+            var netPay = (typeof row.net === 'number') ? row.net.toFixed(2) : '0.00';
+            
+            tr.innerHTML = `
+              <td>${new Date(row.date).toLocaleDateString()}</td>
+              <td>${row.empId}</td>
+              <td>${row.name}</td>
+              <td>$${grossPay}</td>
+              <td>$${netPay}</td>
+              <td><span class="status ${statusClass}">${row.status || 'N/A'}</span></td>
+            `;
+            tableBody.appendChild(tr);
+          });
+        } else {
+          // Data නැත්නම් "No data found" පෙන්වනවා
+          tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No data found.</td></tr>';
+        }
+      }
+
+      // Error එකක් ආවොත් පෙන්නන function එක (colspan="6" විදිහට හදලා තියෙන්නේ)
+      function onFailure(error) {
+        var tableBody = document.getElementById('payroll-table-body');
+        tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: red;">Failed to load data: ${error.message}</td></tr>`;
+      }
+
+      // Charts අඳින function එක
+      function drawCharts() {
+        
+        var breakdownData = google.visualization.arrayToDataTable([
+          ['Component', 'Amount'],
+          ['Base Salary', 6000], ['Bonuses', 2000], ['Benefits', 500]
+        ]);
+        var breakdownOptions = {
+          pieHole: 0.4, colors: ['#5A9367', '#F4A261', '#E9C46A']
+        };
+        var breakdownChart = new google.visualization.PieChart(document.getElementById('breakdown_chart_div'));
+        breakdownChart.draw(breakdownData, breakdownOptions);
+
+        var trendData = google.visualization.arrayToDataTable([
+          ['Month', 'Payroll', 'Bonuses'],
+          ['Jan', 10000, 400], ['Feb', 11700, 460],
+          ['Mar', 9800, 1120], ['Apr', 10300, 540]
+        ]);
+        var trendOptions = {
+          curveType: 'function', legend: { position: 'bottom' },
+          colors: ['#5A9367', '#F4A261']
+        };
+        var trendChart = new google.visualization.LineChart(document.getElementById('trend_chart_div'));
+        trendChart.draw(trendData, trendOptions);
+      }// Vs Code connect in APPs Script 
+      //phpgitghubsbbh
+    
+      
+    </script>
+  </body>
+</html>

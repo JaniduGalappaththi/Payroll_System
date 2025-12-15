@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <?!= include('Stylesheet'); ?>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <style>
+        .form-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px 0;
+        }
+        .form-field { display: flex; flex-direction: column; }
+        .form-field label { margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
+        .form-field input, .form-field select {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .form-field input[readonly] {
+            background-color: #f0f0f0;
+            cursor: not-allowed;
+            color: #333;
+            font-weight: bold;
+        }
+        .form-field-full { grid-column: 1 / -1; }
+        .submit-btn {
+            background-color: var(--solar-green);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .submit-btn:disabled { background-color: #ccc; }
+        #status-message { margin-top: 15px; font-weight: bold; }
+        .status-success { color: var(--solar-green); }
+        .status-error { color: red; }
+    </style>
+</head>
+<body>
+
+   <nav class="navbar">
+  <div class="navbar-brand">
+    AURORA SOLAR PAYROLL
+  </div>
+  <div class="navbar-menu">
+    
+    <a href="<?= webAppUrl ?>" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=add" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-user-plus"></i><span>Add Employee</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=list" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-users"></i><span>Employee List</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=salary" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-wallet"></i><span>Salary</span></div>
+    </a>
+
+    <a href="<?= webAppUrl ?>?page=attendance" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-clock"></i><span>Attendance</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=runpayroll" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-play-circle"></i><span>Run Payroll</span></div>
+    </a>
+    
+    <a href="<?= webAppUrl ?>?page=reports" class="nav-item-link">
+      <div class="nav-item"><i class="fas fa-file-alt"></i><span>Reports</span></div>
+    </a>
+
+  </div>
+</nav>
+
+    <main class="main-container">
+        <div class="widget widget-full">
+            <h2 class="widget-title">Run New Payroll (Automated)</h2>
+            
+            <form id="payroll-form">
+                <input type="hidden" id="pay-type">
+
+                <div class="form-container">
+                    
+                    <div class="form-field">
+                        <label for="emp-select">Select Employee</label>
+                        <select id="emp-select" onchange="onEmployeeSelect()">
+                            <option value="">-- Loading employees... --</option>
+                        </select>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="pay-date">Payment Date</label>
+                        <input type="date" id="pay-date" required>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="base-salary">Base Salary / Hourly Rate (LKR)</label>
+                        <input type="number" id="base-salary" readonly>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="allowance">Fixed Allowance (LKR)</label>
+                        <input type="number" id="allowance" readonly>
+                    </div>
+                    
+                    <div class="form-field">
+                        <label for="total-hours">Total Hours Logged (from Timesheet)</label>
+                        <input type="number" id="total-hours" readonly>
+                    </div>
+
+                    <div class="form-field">
+                        <label for="bonus">Bonus (LKR)</label>
+                        <input type="number" id="bonus" value="0" oninput="calculateTotal()">
+                    </div>
+
+                    <div class="form-field">
+                        <label for="gross-pay">Gross Pay (Calculated)</label>
+                        <input type="number" id="gross-pay" readonly>
+                    </div>
+                    
+                    <div class="form-field">
+                        <label for="deductions">Deductions (e.g., Tax/EPF)</label>
+                        <input type="number" id="deductions" value="0" oninput="calculateTotal()">
+                    </div>
+
+                    <div class="form-field-full">
+                        <label for="net-pay">Net Pay (Final Amount)</label>
+                        <input type="number" id="net-pay" readonly style="font-size: 1.2rem; border-color: var(--solar-green);">
+                    </div>
+
+                    <div class="form-field-full">
+                        <button type="submit" class="submit-btn" id="submit-button" disabled>
+                            Approve & Save Payment
+                        </button>
+                        <div id="status-message"></div>
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        // Global variable එකක්, employee data තියාගන්න
+        var currentEmployeeData = {};
+
+        document.addEventListener("DOMContentLoaded", loadEmployeeDropdown);
+
+        function loadEmployeeDropdown() {
+            google.script.run
+                .withSuccessHandler(populateDropdown)
+                .withFailureHandler(onFailure)
+                .getEmployeeNames();
+        }
+
+        function populateDropdown(employees) {
+            var select = document.getElementById('emp-select');
+            select.innerHTML = '<option value="">-- Select an employee --</option>';
+            if (employees && employees.length > 0) {
+                employees.forEach(function(emp) {
+                    var option = document.createElement('option');
+                    option.value = emp.empId;
+                    option.text = `${emp.name} (${emp.empId})`;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">-- No employees found --</option>';
+            }
+        }
+
+        // Employee කෙනෙක්ව select කරාම
+        function onEmployeeSelect() {
+            var empId = document.getElementById('emp-select').value;
+            if (empId) {
+                google.script.run
+                    .withSuccessHandler(displaySalaryDetails)
+                    .withFailureHandler(onFailure)
+                    .getSalaryDetailsForEmployee(empId); // අලුත්, "smart" function එක
+                document.getElementById('submit-button').disabled = false;
+            } else {
+                // ... fields clear ...
+            }
+        }
+
+        // === මෙන්න අලුත් Function එක (1) ===
+        // Salary, Allowance, Total Hours ආවම inputs වලට දානවා
+        function displaySalaryDetails(details) {
+            if (details && !details.error) {
+                // අලුත් data ටික global variable එකට දාගන්නවා
+                currentEmployeeData = details; 
+
+                document.getElementById('base-salary').value = details.baseSalary || 0;
+                document.getElementById('allowance').value = details.allowance || 0;
+                document.getElementById('total-hours').value = details.totalHours || 0; // අලුත් field එක
+                
+                calculateTotal(); // Auto-calculate කරනවා
+            } else {
+                alert(details.error || "Could not find salary details.");
+                // ... fields clear ...
+            }
+        }
+
+        // === මෙන්න අලුත් Function එක (2) ===
+        // "Smart" Auto-Calculate
+        function calculateTotal() {
+            var base = parseFloat(document.getElementById('base-salary').value) || 0;
+            var allowance = parseFloat(document.getElementById('allowance').value) || 0;
+            var bonus = parseFloat(document.getElementById('bonus').value) || 0;
+            var deductions = parseFloat(document.getElementById('deductions').value) || 0;
+            
+            // අලුත් data ටික ගන්නවා
+            var hours = parseFloat(document.getElementById('total-hours').value) || 0;
+            var payType = currentEmployeeData.payType; // Global variable එකෙන් ගන්නවා
+
+            var grossPay = 0;
+
+            // පඩි විදිහ (Pay Type) එක check කරනවා
+            if (payType === 'Hourly') {
+                // පැයක පඩිය * මුළු පැය ගාණ
+                grossPay = (base * hours) + allowance + bonus;
+            } else {
+                // 'Monthly' (මාසික) නම්, පැය ගාණ අදාළ නෑ
+                grossPay = base + allowance + bonus;
+            }
+
+            var netPay = grossPay - deductions;
+
+            document.getElementById('gross-pay').value = grossPay.toFixed(2);
+            document.getElementById('net-pay').value = netPay.toFixed(2);
+        }
+
+        // Form එක submit කරන function එක (වෙනසක් නෑ)
+        document.getElementById("payroll-form").addEventListener("submit", function(e) {
+            e.preventDefault(); 
+            var statusMsg = document.getElementById("status-message");
+            var submitBtn = document.getElementById("submit-button");
+            statusMsg.className = "";
+            statusMsg.innerText = "Processing...";
+            submitBtn.disabled = true;
+
+            var paymentData = {
+                date: document.getElementById('pay-date').value,
+                empId: document.getElementById('emp-select').value,
+                empName: document.getElementById('emp-select').options[document.getElementById('emp-select').selectedIndex].text.split(' (')[0],
+                grossPay: document.getElementById('gross-pay').value,
+                netPay: document.getElementById('net-pay').value,
+                status: "Paid"
+            };
+
+            google.script.run
+                .withSuccessHandler(onSaveSuccess)
+                .withFailureHandler(onFailure)
+                .logPaymentToHistory(paymentData);
+        });
+
+        function onSaveSuccess(response) {
+            var statusMsg = document.getElementById("status-message");
+            var submitBtn = document.getElementById("submit-button");
+            statusMsg.className = "status-success";
+            statusMsg.innerText = response.message;
+            submitBtn.disabled = false;
+            document.getElementById("payroll-form").reset();
+            currentEmployeeData = {}; // Clear global variable
+        }
+
+        function onFailure(error) {
+            var statusMsg = document.getElementById("status-message");
+            var submitBtn = document.getElementById("submit-button");
+            statusMsg.className = "status-error";
+            statusMsg.innerText = "Error: " + error.message;
+            submitBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <?!= include('Stylesheet'); ?>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <style>
+      .table-container { width: 100%; overflow-x: auto; }
+      .data-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+      .data-table th, .data-table td {
+        padding: 12px 15px; text-align: left;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+      }
+      .data-table th { background-color: rgba(0,0,0,0.03); font-weight: 600; }
+      .action-buttons { display: flex; gap: 10px; }
+      .action-btn { background: none; border: none; cursor: pointer; font-size: 1rem; }
+      .btn-edit { color: var(--solar-orange); }
+      .btn-delete { color: #E76F51; }
+    </style>
+  </head>
+  <body>
+
+    <nav class="navbar">
+      <div class="navbar-brand">
+        AURORA SOLAR PAYROLL
+      </div>
+      <div class="navbar-menu">
+        <a href="<?= webAppUrl ?>" class="nav-item-link">
+          <div class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></div>
+        </a>
+        <a href="<?= webAppUrl ?>?page=add" class="nav-item-link">
+          <div class="nav-item"><i class="fas fa-user-plus"></i><span>Add Employee</span></div>
+        </a>
+        <a href="<?= webAppUrl ?>?page=list" class="nav-item-link">
+          <div class="nav-item"><i class="fas fa-users"></i><span>Employee List</span></div>
+        </a>
+        <a href="<?= webAppUrl ?>?page=salary" class="nav-item-link">
+          <div class="nav-item"><i class="fas fa-wallet"></i><span>Salary</span></div>
+        </a>
+        <a href="<?= webAppUrl ?>?page=attendance" class="nav-item-link">
+          <div class="nav-item"><i class="fas fa-clock"></i><span>Attendance</span></div>
+        </a>
+        <a href="<?= webAppUrl ?>?page=runpayroll" class="nav-item-link">
+          <div class="nav-item"><i class="fas fa-play-circle"></i><span>Run Payroll</span></div>
+        </a>
+        <a href="<?= webAppUrl ?>?page=reports" class="nav-item-link">
+          <div class="nav-item"><i class="fas fa-file-alt"></i><span>Reports</span></div>
+        </a>
+      </div>
+    </nav>
+
+    <main class="main-container">
+      <div class="widget widget-full">
+        <h2 class="widget-title">Employee List</h2>
+        
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Employee ID</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Job Title</th>
+                <th>Department</th>
+                <th>Join Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="employee-table-body">
+              </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        // "Loading..." message එක JavaScript එකෙන් දානවා
+        var tableBody = document.getElementById('employee-table-body');
+        tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">Loading employee data...</td></tr>';
+        
+        loadEmployeeList();
+      });
+
+      function loadEmployeeList() {
+        google.script.run
+          .withSuccessHandler(populateTable)
+          .withFailureHandler(onFailure)
+          .getEmployeeList();
+      }
+
+      function populateTable(data) {
+        var tableBody = document.getElementById('employee-table-body');
+        tableBody.innerHTML = ""; // "Loading..." මකනවා
+
+        // data කියන එක array එකක්ද, හිස් නැද්ද කියලා බලනවා
+        if (data && data.length > 0) {
+          data.forEach(function(row) {
+            var tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${row.empId}</td>
+              <td>${row.firstName}</td>
+              <td>${row.lastName}</td>
+              <td>${row.jobTitle}</td>
+              <td>${row.department}</td>
+              <td>${new Date(row.joinDate).toLocaleDateString()}</td>
+              <td class="action-buttons">
+                <button class="action-btn btn-edit" title="Edit (Coming soon)"><i class="fas fa-edit"></i></button>
+                <button class="action-btn btn-delete" title="Delete" onclick="deleteEmployee('${row.empId}')">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </td>
+            `;
+            tableBody.appendChild(tr);
+          });
+        } else {
+          // Data නැත්නම් "No employees found" පෙන්වනවා
+          tableBody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No employees found. Add one!</td></tr>';
+        }
+      }
+
+      function onFailure(error) {
+        var tableBody = document.getElementById('employee-table-body');
+        tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: red;">Failed to load data: ${error.message}</td></tr>`;
+      }
+
+      // Delete බට්න් එක click කලාම
+      function deleteEmployee(empId) {
+        if (confirm("Are you sure you want to delete employee " + empId + "?")) {
+          google.script.run
+            .withSuccessHandler(onDeleteSuccess)
+            .withFailureHandler(onFailure)
+            .deleteEmployeeRecord(empId);
+        }
+      }
+
+      // සාර්ථකව delete උනාම
+      function onDeleteSuccess(response) {
+        if (response.status === "success") {
+          alert(response.message);
+          loadEmployeeList(); // Table එක refresh කරනවා
+        } else {
+          alert(response.message);
+        }
+      }
+    </script>
+  </body>
+</html>
